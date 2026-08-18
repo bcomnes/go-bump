@@ -1,5 +1,5 @@
-package go-bump
+// Package gobump stores release metadata for the go-bump action repository.
+package gobump
 
-var (
-	Version = "dev"
-)
+// Version is the source release version managed by goversion.
+var Version = "dev"

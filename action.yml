@@ -1,0 +1,128 @@
+name: go bump
+description: Create and publish a Go module release with a consumer-pinned goversion tool.
+branding:
+  icon: box
+  color: blue
+
+inputs:
+  version-type:
+    description: Version directive (major, minor, patch, premajor, preminor, prepatch, prerelease, or custom).
+    required: false
+  new-version:
+    description: Explicit semantic version required for custom or when version-type is omitted.
+    required: false
+  version-file:
+    description: Repository-relative goversion version file.
+    required: false
+    default: ./version.go
+  files:
+    description: Newline-delimited additional files passed as repeated goversion -file flags.
+    required: false
+  bump-files:
+    description: Newline-delimited files passed as repeated goversion -bump-file flags.
+    required: false
+  post-bump:
+    description: Repository-relative executable passed to goversion -post-bump.
+    required: false
+  publish:
+    description: Run goversion publish after creating and validating the local release.
+    required: false
+    default: 'true'
+  publish-dry-run:
+    description: Run goversion publish -dry without changing remote state.
+    required: false
+    default: 'false'
+  remote:
+    description: Git remote passed to goversion publish.
+    required: false
+    default: origin
+  proxy:
+    description: Go module proxy passed to goversion publish.
+    required: false
+    default: https://proxy.golang.org
+  publish-timeout:
+    description: Per-command Go duration passed to goversion publish -timeout.
+    required: false
+    default: 2m
+  create-release:
+    description: Create or reuse a GitHub Release through gh during publication.
+    required: false
+    default: 'true'
+  seed-proxy:
+    description: Seed and verify the configured Go module proxy during publication.
+    required: false
+    default: 'true'
+  major-branch:
+    description: Pass -major-branch to goversion publish to maintain the moving major action branch (for example v1).
+    required: false
+    default: 'false'
+  git-username:
+    description: Name for the local version commit. Defaults to github.actor.
+    required: false
+  git-email:
+    description: Email for the local version commit. Defaults to the actor's GitHub noreply address.
+    required: false
+  github-token:
+    description: Token used for authenticated HTTPS Git publication and gh. Defaults to github.token.
+    required: false
+  pre-publish:
+    description: Trusted shell command run after local release creation and before publication.
+    required: false
+  post-publish:
+    description: Trusted shell command run after successful publication handling.
+    required: false
+
+outputs:
+  old-version:
+    description: Version before the release.
+    value: ${{ steps.bump.outputs.old-version }}
+  new-version:
+    description: Created release version.
+    value: ${{ steps.bump.outputs.new-version }}
+  release-tag:
+    description: Exact local release tag verified at HEAD.
+    value: ${{ steps.bump.outputs.release-tag }}
+  release-commit:
+    description: Exact release commit SHA.
+    value: ${{ steps.bump.outputs.release-commit }}
+  release-branch:
+    description: Attached branch containing the release commit.
+    value: ${{ steps.bump.outputs.release-branch }}
+  published:
+    description: Whether goversion publish completed without dry-run.
+    value: ${{ steps.bump.outputs.published }}
+  publish-dry-run:
+    description: Whether goversion publication preflight completed successfully.
+    value: ${{ steps.bump.outputs.publish-dry-run }}
+  major-branch:
+    description: Moving major action branch updated by this release, or empty when disabled.
+    value: ${{ steps.bump.outputs.major-branch }}
+
+runs:
+  using: composite
+  steps:
+    - id: bump
+      name: Create and publish Go release
+      shell: bash
+      env:
+        VERSION_TYPE: ${{ inputs.version-type }}
+        NEW_VERSION: ${{ inputs.new-version }}
+        VERSION_FILE: ${{ inputs.version-file }}
+        FILES: ${{ inputs.files }}
+        BUMP_FILES: ${{ inputs.bump-files }}
+        POST_BUMP: ${{ inputs.post-bump }}
+        PUBLISH: ${{ inputs.publish }}
+        PUBLISH_DRY_RUN: ${{ inputs.publish-dry-run }}
+        REMOTE: ${{ inputs.remote }}
+        PROXY: ${{ inputs.proxy }}
+        PUBLISH_TIMEOUT: ${{ inputs.publish-timeout }}
+        CREATE_RELEASE: ${{ inputs.create-release }}
+        SEED_PROXY: ${{ inputs.seed-proxy }}
+        MAJOR_BRANCH: ${{ inputs.major-branch }}
+        GIT_USERNAME: ${{ inputs.git-username }}
+        GIT_EMAIL: ${{ inputs.git-email }}
+        PRE_PUBLISH: ${{ inputs.pre-publish }}
+        POST_PUBLISH: ${{ inputs.post-publish }}
+        GH_TOKEN: ${{ inputs.github-token || github.token }}
+        GITHUB_ACTOR: ${{ github.actor }}
+      run: "$GITHUB_ACTION_PATH/scripts/go-bump.sh"
