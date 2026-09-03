@@ -143,11 +143,6 @@ Cross-major explicit and prerelease transitions are rejected unless the literal 
 
 Set `seed-proxy: false` for private modules or releases that must not contact a module proxy.
 
-`major-branch` is intended for repositories that publish GitHub Actions.
-It maps directly to `goversion publish -major-branch`.
-`goversion` resolves the exact release-tag commit, updates `refs/heads/vN`, and pushes that branch with `--force-with-lease` so concurrent releases are not overwritten silently.
-It requires publication but supports `publish-dry-run` through `goversion`'s planned/reused status model.
-The consumer's pinned `goversion` must expose the `-major-branch` flag; otherwise `go-bump` fails before mutation with an upgrade command.
 
 Publication is resumable.
 Rerunning `goversion publish` reuses matching remote refs and an existing GitHub Release before continuing incomplete work such as proxy verification.
