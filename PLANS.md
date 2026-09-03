@@ -495,6 +495,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 ### Input and policy tests
 
 - [x] Test a valid patch directive through local release creation.
+- [x] Test initial `dev` normalization through patch (`0.0.1`), minor (`0.1.0`), and explicit custom (`0.1.0`) releases.
 - [ ] Test every other supported version directive and same-major explicit stable and prerelease versions.
 - [ ] Test missing, conflicting, unknown, multiline, whitespace-containing, leading-`v`, and flag-like version values.
 - [x] Test that an invalid strict Boolean fails before mutation.

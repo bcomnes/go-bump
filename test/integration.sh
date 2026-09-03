@@ -19,16 +19,11 @@ assert_contains() {
 
 new_repo() {
   local name=$1
+  local initial_version=${2:-0.1.0}
   local repo=$TMP/$name
   mkdir -p "$repo"
   cp "$ROOT/go.mod" "$ROOT/go.sum" "$repo/"
-  cat > "$repo/version.go" <<'GO'
-package example
-
-var (
-	Version = "0.1.0"
-)
-GO
+  printf 'package example\n\nvar (\n\tVersion = "%s"\n)\n' "$initial_version" > "$repo/version.go"
   cat > "$repo/example.go" <<'GO'
 package example
 
@@ -66,6 +61,19 @@ assert_contains "$TMP/local-release-output" 'release-branch=main'
 assert_contains "$TMP/local-release-output" 'published=false'
 [[ "$(git -C "$repo" describe --exact-match --tags HEAD)" == 'v0.1.1' ]]
 [[ "$(git -C "$repo" log -1 --format=%s)" == '0.1.1' ]]
+
+printf 'test: initial dev releases normalize to semantic major zero\n'
+repo=$(new_repo dev-patch dev)
+run_action "$repo"
+assert_contains "$TMP/dev-patch-output" 'new-version=0.0.1'
+
+repo=$(new_repo dev-minor dev)
+run_action "$repo" VERSION_TYPE=minor
+assert_contains "$TMP/dev-minor-output" 'new-version=0.1.0'
+
+repo=$(new_repo dev-custom dev)
+run_action "$repo" VERSION_TYPE=custom NEW_VERSION=0.1.0
+assert_contains "$TMP/dev-custom-output" 'new-version=0.1.0'
 
 printf 'test: hooks validate the candidate without receiving tokens\n'
 repo=$(new_repo hooks)

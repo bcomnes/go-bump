@@ -63,6 +63,10 @@ read_version() {
 
 major_of() {
   local version=${1#v}
+  if [[ "$version" == 'dev' ]]; then
+    printf '0\n'
+    return
+  fi
   version=${version%%-*}
   version=${version%%+*}
   printf '%s\n' "${version%%.*}"
