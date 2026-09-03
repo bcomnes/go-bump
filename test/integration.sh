@@ -3,6 +3,13 @@ set -euo pipefail
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 SCRIPT=$ROOT/scripts/go-bump.sh
+
+# The suite may run inside go-bump's pre-publish hook, where action inputs are
+# exported in the parent environment. Each test supplies its own configuration.
+unset VERSION_TYPE NEW_VERSION VERSION_FILE FILES BUMP_FILES POST_BUMP
+unset PUBLISH PUBLISH_DRY_RUN REMOTE PROXY PUBLISH_TIMEOUT CREATE_RELEASE SEED_PROXY MAJOR_BRANCH
+unset GIT_USERNAME GIT_EMAIL PRE_PUBLISH POST_PUBLISH GH_TOKEN GITHUB_TOKEN
+
 TMP=$(mktemp -d)
 TMP=$(CDPATH= cd -- "$TMP" && pwd -P)
 trap 'rm -rf "$TMP"' EXIT
