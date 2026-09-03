@@ -2,9 +2,11 @@
 
 ## Product summary
 
-`go-bump` is an action-only composite GitHub Action that orchestrates a consumer-pinned `goversion` tool.
+`go-bump` is an action-only composite GitHub Action wrapper around a consumer-pinned `goversion` tool.
 
-The action preserves a local-first release workflow by running the same `go tool github.com/bcomnes/goversion/v2` commands that maintainers can run locally.
+`goversion` provides the local-first release workflow.
+
+`go-bump` adapts that workflow to GitHub Actions by translating action inputs into `goversion` commands and supplying runner-specific orchestration.
 
 The supported integration target is `goversion v2.3.0`.
 
@@ -38,7 +40,7 @@ No production GitHub release or public module publication has been performed fro
 
 1. Provide a small reusable action for releasing a single repository-root Go module.
 2. Require an exact consumer-selected `goversion` tool version through the consumer's committed Go tool dependency.
-3. Keep local and CI commands equivalent.
+3. Keep the action's delegated commands equivalent to the commands in `goversion`'s local workflow.
 4. Support safe stable, prerelease, and explicit semantic-version directives accepted by `goversion v2.3.0`.
 5. Reject unsafe cross-major transitions before `goversion` mutates the repository.
 6. Preserve a clear two-phase boundary between local release creation and remote publication.
@@ -543,7 +545,7 @@ A networked end-to-end release test should use a dedicated repository and remain
 1. `go-bump` is action-only.
 2. Consumers must pin `goversion v2.3.0` as a committed Go tool dependency.
 3. The action has no installation or upgrade fallback.
-4. The workflow is local-first and uses the same version and publish commands locally and in CI.
+4. `goversion` is the local-first workflow, and `go-bump` is its GitHub Actions wrapper using equivalent version and publish commands.
 5. Publication defaults to enabled.
 6. `goversion publish` exclusively owns exact atomic module branch and tag publication, GitHub Release create or reuse behavior, and Go proxy seeding and verification.
 7. `goversion publish` owns moving major action-branch publication; `go-bump` only capability-checks and passes through the flag.

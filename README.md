@@ -5,13 +5,11 @@
 [action-img]: https://github.com/bcomnes/go-bump/actions/workflows/test.yml/badge.svg
 [action-url]: https://github.com/bcomnes/go-bump/actions/workflows/test.yml
 
-`go-bump` is a local-first GitHub Action for creating and publishing Go module releases with [`goversion`](https://github.com/bcomnes/goversion).
+`go-bump` is a GitHub Action wrapper for creating and publishing Go module releases with [`goversion`](https://github.com/bcomnes/goversion).
 
-It runs the same consumer-pinned `goversion` commands that maintainers use locally.
+`goversion` provides the local-first release workflow and owns version updates, the local release commit and tag, atomic Git publication, GitHub Release creation or reuse, moving major action branches, and Go proxy verification.
 
-`goversion` owns version updates, the local release commit and tag, atomic Git publication, GitHub Release creation or reuse, and Go proxy verification.
-
-`go-bump` supplies GitHub Actions input validation, Git identity, credentials, lifecycle hooks, and outputs.
+`go-bump` adapts that workflow to GitHub Actions by translating action inputs into consumer-pinned `goversion` commands and supplying input validation, Git identity, credentials, lifecycle hooks, and outputs.
 
 ## Requirements
 
