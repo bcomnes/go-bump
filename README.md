@@ -67,7 +67,7 @@ on:
           - prerelease
           - custom
       new-version:
-        description: Explicit semantic version for custom
+        description: Explicit semantic version for custom, such as 0.1.0 (no leading v)
         required: false
         type: string
 
@@ -106,6 +106,14 @@ The initial test run validates the current source.
 
 `pre-publish` validates the exact version commit and tag before `goversion publish` changes remote state.
 
+For a custom release, select `custom` and enter the version without a leading `v`:
+
+```text
+0.1.0
+```
+
+Do not enter `v0.1.0`; `goversion` adds the `v` prefix to the Git tag automatically.
+
 Use a repository-controlled command only; hook inputs execute trusted shell code.
 
 ## Inputs
@@ -115,7 +123,7 @@ Use a repository-controlled command only; hook inputs execute trusted shell code
 | Input | Default | Description |
 |---|---|---|
 | `version-type` | none | `major`, `minor`, `patch`, `premajor`, `preminor`, `prepatch`, `prerelease`, or `custom` |
-| `new-version` | none | Explicit version required for `custom` or when `version-type` is omitted |
+| `new-version` | none | Explicit version without a leading `v`, such as `0.1.0`, required for `custom` or when `version-type` is omitted |
 | `version-file` | `./version.go` | Repository-relative version file |
 | `files` | none | Newline-delimited values passed as repeated `goversion -file` flags |
 | `bump-files` | none | Newline-delimited values passed as repeated `goversion -bump-file` flags |

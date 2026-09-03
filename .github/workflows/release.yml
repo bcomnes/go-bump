@@ -17,7 +17,7 @@ on:
           - prerelease
           - custom
       new-version:
-        description: Explicit semantic version when version-type is custom
+        description: Explicit semantic version for custom, such as 0.1.0 (no leading v)
         required: false
         type: string
 

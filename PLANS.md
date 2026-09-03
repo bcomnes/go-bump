@@ -153,7 +153,7 @@ A missing or mismatched tool must fail before mutation with the exact pinned set
 | Input | Default | Contract |
 |---|---|---|
 | `version-type` | none | This input accepts `major`, `minor`, `patch`, `premajor`, `preminor`, `prepatch`, `prerelease`, or `custom`. |
-| `new-version` | none | This input supplies a valid explicit semantic version when `version-type` is `custom` or omitted. |
+| `new-version` | none | This input supplies a valid explicit semantic version without a leading `v`, such as `0.1.0`, when `version-type` is `custom` or omitted. |
 | `version-file` | `./version.go` | This input maps to the version command's `-version-file` flag. |
 | `files` | none | This newline-delimited input maps each nonempty line to one repeated `-file` flag. |
 | `bump-files` | none | This newline-delimited input maps each nonempty line to one repeated `-bump-file` flag. |
@@ -351,7 +351,7 @@ on:
           - prerelease
           - custom
       new-version:
-        description: Explicit semantic version for custom
+        description: Explicit semantic version for custom, such as 0.1.0 (no leading v)
         required: false
         type: string
 

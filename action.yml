@@ -9,7 +9,7 @@ inputs:
     description: Version directive (major, minor, patch, premajor, preminor, prepatch, prerelease, or custom).
     required: false
   new-version:
-    description: Explicit semantic version required for custom or when version-type is omitted.
+    description: Explicit semantic version required for custom or when version-type is omitted (for example 0.1.0, not v0.1.0).
     required: false
   version-file:
     description: Repository-relative goversion version file.
