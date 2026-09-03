@@ -185,10 +185,13 @@ GitHub tokens are removed from hook environments.
 | `publish-dry-run` | `true` after successful publication preflight |
 | `major-branch` | Moving major action branch updated by the release, or empty when disabled |
 
-## Versioned action references
+## Moving major references for GitHub Actions
+
+The `major-branch` feature exists specifically for publishing GitHub Actions that consumers reference as `uses: owner/action@vN`.
+Ordinary Go modules do not need a moving major branch and should leave `major-branch` disabled.
 
 Release tags such as `v1.4.2` are immutable.
-When a release enables `major-branch`, `goversion` also advances the compatible moving branch, such as `v1`.
+When a GitHub Action release enables `major-branch`, `goversion` also advances the compatible moving branch, such as `v1`.
 
 Consumers can choose an exact release:
 
