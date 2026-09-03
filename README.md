@@ -6,9 +6,7 @@
 [action-url]: https://github.com/bcomnes/go-bump/actions/workflows/test.yml
 
 `go-bump` is a GitHub Action wrapper for creating and publishing Go module releases with [`goversion`](https://github.com/bcomnes/goversion).
-
 `goversion` provides the local-first release workflow and owns version updates, the local release commit and tag, atomic Git publication, GitHub Release creation or reuse, moving major action branches, and Go proxy verification.
-
 `go-bump` adapts that workflow to GitHub Actions by translating action inputs into consumer-pinned `goversion` commands and supplying input validation, Git identity, credentials, lifecycle hooks, and outputs.
 
 ## Requirements
@@ -103,7 +101,6 @@ jobs:
 ```
 
 The initial test run validates the current source.
-
 `pre-publish` validates the exact version commit and tag before `goversion publish` changes remote state.
 
 For a custom release, select `custom` and enter the version without a leading `v`:
@@ -113,7 +110,6 @@ For a custom release, select `custom` and enter the version without a leading `v
 ```
 
 Do not enter `v0.1.0`; `goversion` adds the `v` prefix to the Git tag automatically.
-
 Use a repository-controlled command only; hook inputs execute trusted shell code.
 
 ## Inputs
@@ -130,7 +126,6 @@ Use a repository-controlled command only; hook inputs execute trusted shell code
 | `post-bump` | none | Repository-relative executable passed to `goversion -post-bump` |
 
 `from-git` and `dev` are not action release directives.
-
 Cross-major explicit and prerelease transitions are rejected unless the literal `major` directive can perform the required Go module migration safely.
 
 ### Publishing
@@ -149,17 +144,12 @@ Cross-major explicit and prerelease transitions are rejected unless the literal 
 Set `seed-proxy: false` for private modules or releases that must not contact a module proxy.
 
 `major-branch` is intended for repositories that publish GitHub Actions.
-
 It maps directly to `goversion publish -major-branch`.
-
 `goversion` resolves the exact release-tag commit, updates `refs/heads/vN`, and pushes that branch with `--force-with-lease` so concurrent releases are not overwritten silently.
-
 It requires publication but supports `publish-dry-run` through `goversion`'s planned/reused status model.
-
 The consumer's pinned `goversion` must expose the `-major-branch` flag; otherwise `go-bump` fails before mutation with an upgrade command.
 
 Publication is resumable.
-
 Rerunning `goversion publish` reuses matching remote refs and an existing GitHub Release before continuing incomplete work such as proxy verification.
 
 ### Identity and hooks
@@ -198,7 +188,6 @@ GitHub tokens are removed from hook environments.
 ## Versioned action references
 
 Release tags such as `v1.4.2` are immutable.
-
 When a release enables `major-branch`, `goversion` also advances the compatible moving branch, such as `v1`.
 
 Consumers can choose an exact release:
@@ -225,19 +214,14 @@ Repository maintainers can find the self-release procedure in [`CONTRIBUTING.md`
 4. Seeds and verifies the module through the configured Go proxy.
 
 Missing or unauthenticated `gh` causes `goversion` to warn and skip the GitHub Release while continuing publication.
-
 Set `create-release: false` to skip that stage intentionally.
-
 An authenticated `gh` operation that fails remains fatal.
 
 ## Recovery
 
 A failed local version operation may leave changed files, a commit, or a local tag.
-
 `go-bump` reports state but does not reset or delete release work automatically.
-
 A `pre-publish` failure leaves the local release candidate unpushed for inspection.
-
 A publication failure may occur after public refs or a GitHub Release already exist.
 
 Resume with the same publication settings, for example:
