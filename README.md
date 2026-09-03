@@ -195,40 +195,25 @@ GitHub tokens are removed from hook environments.
 | `publish-dry-run` | `true` after successful publication preflight |
 | `major-branch` | Moving major action branch updated by the release, or empty when disabled |
 
-## Self-hosting action release
+## Versioned action references
 
-The pinned `goversion v2.3.0` includes `publish -major-branch`, so `go-bump` can release itself by invoking the checked-out composite action and enabling its moving major branch:
+Release tags such as `v1.4.2` are immutable.
+
+When a release enables `major-branch`, `goversion` also advances the compatible moving branch, such as `v1`.
+
+Consumers can choose an exact release:
 
 ```yaml
-- uses: actions/checkout@v4
-  with:
-    ref: ${{ github.event.repository.default_branch }}
-    fetch-depth: 0
-    persist-credentials: false
-
-- uses: actions/setup-go@v5
-  with:
-    go-version-file: go.mod
-
-- run: make all
-
-- id: release
-  uses: ./
-  with:
-    version-type: ${{ inputs.version-type }}
-    new-version: ${{ inputs.new-version }}
-    github-token: ${{ github.token }}
-    pre-publish: make all
-    major-branch: true
+uses: bcomnes/go-bump@v1.4.2
 ```
 
-For a release such as `v1.4.2`, consumers can then use:
+Or they can receive compatible updates through the moving major branch:
 
 ```yaml
 uses: bcomnes/go-bump@v1
 ```
 
-The exact `v1.4.2` tag remains immutable while the `v1` branch advances to compatible releases.
+Repository maintainers can find the self-release procedure in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Publication behavior
 

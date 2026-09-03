@@ -588,6 +588,7 @@ A networked end-to-end release test should use a dedicated repository and remain
 - [x] Temporary-repository integration tests cover local versioning, hook isolation, input rejection, publication delegation, and dry-run immutability.
 - [x] `goversion` tests cover moving major action-branch creation, advancement, reuse, dry-run planning, and force-with-lease failures.
 - [ ] Expand temporary-repository coverage across the remaining exact input and flag mappings listed in the test plan.
-- [x] The README contains pinned setup, an attached branch workflow, and a self-hosting release example.
+- [x] The README contains consumer-facing pinned setup, an attached branch workflow, and versioned action-ref guidance.
+- [x] `CONTRIBUTING.md` documents the maintainer-facing self-release procedure.
 - [x] A manual self-release workflow invokes the checked-out action and enables moving major-branch maintenance.
 - [ ] The self-release workflow has been verified in GitHub against real release infrastructure.
