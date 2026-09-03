@@ -21,7 +21,7 @@ It runs the same consumer-pinned `goversion` commands that maintainers use local
 - An attached release branch rather than detached `HEAD`.
 - Full Git history and tags.
 - Go with tool dependencies enabled.
-- `goversion v2.2.5` committed as a Go tool dependency.
+- `goversion v2.3.0` committed as a Go tool dependency.
 - A dedicated `version.go` compatible with `goversion`.
 - `contents: write` when publication is enabled.
 
@@ -32,9 +32,9 @@ Nested modules, multi-module repositories, and Go workspaces are not supported i
 Pin the release tool once and commit the module changes:
 
 ```console
-go get -tool github.com/bcomnes/goversion/v2@v2.2.5
+go get -tool github.com/bcomnes/goversion/v2@v2.3.0
 git add go.mod go.sum
-git commit -m "Add goversion v2.2.5 release tool"
+git commit -m "Add goversion v2.3.0 release tool"
 ```
 
 The equivalent local release flow is:
@@ -191,11 +191,7 @@ GitHub tokens are removed from hook environments.
 
 ## Self-hosting action release
 
-This flow requires a published `goversion` release that includes `publish -major-branch`.
-
-The currently pinned `v2.2.5` predates that flag, so the workflow will fail before mutation until the new upstream release is published and `go.mod` is updated.
-
-After that dependency update, `go-bump` can release itself by invoking the checked-out composite action and enabling its moving major branch:
+The pinned `goversion v2.3.0` includes `publish -major-branch`, so `go-bump` can release itself by invoking the checked-out composite action and enabling its moving major branch:
 
 ```yaml
 - uses: actions/checkout@v4

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly GOVERSION_TOOL='github.com/bcomnes/goversion/v2'
-readonly REQUIRED_GOVERSION='2.2.5'
+readonly REQUIRED_GOVERSION='2.3.0'
 
 fail() {
   printf 'go-bump: %s\n' "$*" >&2

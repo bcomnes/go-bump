@@ -125,29 +125,29 @@ git -C "$repo" remote add origin "$remote"
 assert_contains "$TMP/publish-dry-run-output" 'publish-dry-run=true'
 [[ -z "$(git --git-dir="$remote" show-ref 2>/dev/null || true)" ]]
 
-printf 'test: unavailable major-branch capability fails before mutation\n'
-repo=$(new_repo major-branch-capability)
+printf 'test: publication delegates moving major action branch maintenance\n'
+repo=$(new_repo major-branch)
 remote=$TMP/major-remote.git
 git init --bare "$remote" >/dev/null
 git -C "$repo" remote add origin "$remote"
-before=$(git -C "$repo" rev-parse HEAD)
-if (
-  cd "$repo"
-  env \
-    VERSION_TYPE=patch \
-    PUBLISH=true \
-    CREATE_RELEASE=false \
-    SEED_PROXY=false \
-    MAJOR_BRANCH=true \
-    GIT_USERNAME='Release Bot' \
-    GIT_EMAIL='release@example.com' \
-    GITHUB_OUTPUT="$TMP/major-branch-output" \
-    "$SCRIPT"
-) >"$repo/stdout" 2>"$repo/stderr"; then
-  printf 'unsupported major-branch capability unexpectedly succeeded\n' >&2
-  exit 1
-fi
-[[ "$(git -C "$repo" rev-parse HEAD)" == "$before" ]]
-assert_contains "$repo/stderr" 'does not support publish -major-branch'
+for expected in 0.1.1 0.1.2; do
+  (
+    cd "$repo"
+    env \
+      VERSION_TYPE=patch \
+      PUBLISH=true \
+      CREATE_RELEASE=false \
+      SEED_PROXY=false \
+      MAJOR_BRANCH=true \
+      GIT_USERNAME='Release Bot' \
+      GIT_EMAIL='release@example.com' \
+      GITHUB_OUTPUT="$TMP/major-branch-output" \
+      "$SCRIPT"
+  )
+  release_commit=$(git -C "$repo" rev-parse "v$expected^{commit}")
+  major_commit=$(git --git-dir="$remote" rev-parse 'refs/heads/v0')
+  [[ "$major_commit" == "$release_commit" ]]
+done
+assert_contains "$TMP/major-branch-output" 'major-branch=v0'
 
 printf 'all integration tests passed\n'
