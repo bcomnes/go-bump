@@ -32,9 +32,13 @@ git diff --check
 
 The moving major-branch implementation lives in published `goversion v2.3.0`, and `go-bump` only capability-checks and passes through `publish -major-branch`.
 
-The remaining work is expanded edge-case coverage, richer partial-failure diagnostics, and a controlled GitHub-hosted end-to-end release proving real token-authenticated push, GitHub Release creation, moving major-branch publication, and public proxy verification.
+The initial hosted self-release completed successfully as `v0.0.1` after fixing integration-test isolation from inherited action inputs.
 
-No production GitHub release or public module publication has been performed from this repository yet.
+GitHub Actions run `33792732237` proved token-authenticated publication of the exact `master` branch and `v0.0.1` tag, GitHub Release creation, public Go proxy availability, and moving `v0` branch publication at commit `f6b52f1871e4298407bff134904f1fa46d9b55db`.
+
+The release log contains only GitHub's fully masked token input display and no token-bearing remote URL.
+
+The remaining work is expanded edge-case coverage and richer partial-failure diagnostics.
 
 ## Goals
 
@@ -466,8 +470,8 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Set the publication dry-run output only after a successful `-dry` invocation.
 - [x] Run the optional trusted `post-publish` hook after successful publication handling.
 - [x] Stream `goversion` publication progress and statuses so resume behavior remains understandable.
-- [ ] Verify authenticated HTTPS publication and GitHub Release creation in a controlled GitHub-hosted end-to-end test.
-- [ ] Verify real public proxy seeding in a controlled release test.
+- [x] Verify authenticated HTTPS publication and GitHub Release creation in a controlled GitHub-hosted end-to-end test.
+- [x] Verify real public proxy seeding in a controlled release test.
 - [x] Verify moving major action-branch creation, dry-run, reuse, lease safety, and advancement in `goversion` tests.
 - [x] Verify the `go-bump` pass-through against published `goversion v2.3.0` across moving major-branch creation and advancement.
 
@@ -477,7 +481,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Invoke the checked-out action with `uses: ./` so releasing does not depend on an already published `go-bump` version.
 - [x] Run `make all` before versioning and again through `pre-publish` against the exact release candidate.
 - [x] Enable `major-branch` so each self-release creates or advances the compatible moving `vN` action branch.
-- [ ] Run the workflow in GitHub and verify the exact tag, GitHub Release, proxy result, and moving major branch.
+- [x] Run the workflow in GitHub and verify the exact tag, GitHub Release, proxy result, and moving major branch.
 
 ### Phase 5: Documentation
 
@@ -577,13 +581,13 @@ A networked end-to-end release test should use a dedicated repository and remain
 - [x] Validation for supported input syntax, attached branch state, tool version, and unsafe cross-major policy runs before the local version command.
 - [x] Local versioning delegates to the pinned `goversion v2.3.0` tool.
 - [x] Go module and moving major action-branch publication delegate entirely to `goversion publish`.
-- [ ] A controlled GitHub-hosted test proves default publication atomically publishes the exact branch and tag and completes enabled release and proxy stages.
+- [x] A controlled GitHub-hosted test proves default publication atomically publishes the exact branch and tag and completes enabled release and proxy stages.
 - [ ] Integration tests cover every promised prerelease directive within the safe transition policy.
 - [ ] Integration tests prove unsafe cross-major transitions fail before repository mutation.
 - [ ] Integration tests prove detached checkouts fail before mutation; the README already includes an attached-checkout example.
 - [x] Outputs identify the exact local release and publication result.
 - [x] Tokens are removed from all hook environments and ephemeral credentials avoid token-bearing remote URLs.
-- [ ] A GitHub-hosted test confirms credentials never appear in runner logs or persisted Git configuration.
+- [ ] Add a hosted assertion for post-action persisted Git configuration; release-run log inspection already confirms no unmasked token or token-bearing remote URL.
 - [ ] Local failures provide expanded non-destructive recovery diagnostics on every partial-state path.
 - [x] Publication failures are documented as resumable with the same `goversion publish` command.
 - [x] Temporary-repository integration tests cover local versioning, hook isolation, input rejection, publication delegation, and dry-run immutability.
@@ -592,4 +596,4 @@ A networked end-to-end release test should use a dedicated repository and remain
 - [x] The README contains consumer-facing pinned setup, an attached branch workflow, and versioned action-ref guidance.
 - [x] `CONTRIBUTING.md` documents the maintainer-facing self-release procedure.
 - [x] A manual self-release workflow invokes the checked-out action and enables moving major-branch maintenance.
-- [ ] The self-release workflow has been verified in GitHub against real release infrastructure.
+- [x] The self-release workflow has been verified in GitHub against real release infrastructure with `v0.0.1`.
