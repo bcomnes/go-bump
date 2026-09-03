@@ -220,20 +220,58 @@ Missing or unauthenticated `gh` causes `goversion` to warn and skip the GitHub R
 Set `create-release: false` to skip that stage intentionally.
 An authenticated `gh` operation that fails remains fatal.
 
-## Recovery
+## Recovering a failed publication
 
-A failed local version operation may leave changed files, a commit, or a local tag.
-`go-bump` reports state but does not reset or delete release work automatically.
-A `pre-publish` failure leaves the local release candidate unpushed for inspection.
-A publication failure may occur after public refs or a GitHub Release already exist.
+`go-bump` does not expose a separate resume mode.
+Do not rerun the entire `go-bump` action after it has created a release commit.
+A full rerun can calculate the next version instead of resuming the interrupted publication.
+Use the consumer-pinned `goversion` tool locally to inspect and resume the existing release.
 
-Resume with the same publication settings, for example:
+First, fetch the release branch and tags:
+
+```console
+git fetch --tags origin
+git switch <release-branch>
+git pull --ff-only origin <release-branch>
+```
+
+Check the failed workflow log for the intended version, tag, and commit.
+If the exact tag was already pushed, verify that it identifies the branch tip:
+
+```console
+git rev-parse HEAD
+git rev-parse v0.1.0^{commit}
+```
+
+If the release commit and tag were created only on the failed runner and were not pushed, recreate that candidate locally with the exact version rather than another relative bump:
+
+```console
+go tool github.com/bcomnes/goversion/v2 0.1.0
+go test ./...
+```
+
+Then resume publication directly:
 
 ```console
 go tool github.com/bcomnes/goversion/v2 publish
 ```
 
-Never delete or move a published version tag as automated recovery.
+Use the equivalent publish flags when the action used nondefault settings:
+
+```console
+go tool github.com/bcomnes/goversion/v2 publish \
+  -remote upstream \
+  -proxy https://proxy.example.com \
+  -timeout 5m \
+  -no-release \
+  -no-proxy \
+  -major-branch
+```
+
+Include only the flags that match the failed action run.
+Authenticate Git and `gh` locally before publishing when those stages are enabled.
+`goversion publish` reuses matching branch and tag refs and an existing GitHub Release before continuing incomplete stages such as proxy verification or the moving major action branch.
+Never delete, move, or recreate a published version tag as automated recovery.
 
 ## Development
 
