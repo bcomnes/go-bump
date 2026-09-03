@@ -54,6 +54,26 @@ jobs:
           pre-publish: make all
           major-branch: true
 
+      - name: Verify credentials were not persisted
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_url=$(git remote get-url origin)
+          case "$remote_url" in
+            *x-access-token*|*github_pat_*|*ghp_*|*ghs_*)
+              echo 'A credential-bearing remote URL was persisted' >&2
+              exit 1
+              ;;
+          esac
+          if git config --local --get-regexp '^(credential\.|http\..*\.extraheader)' >/dev/null; then
+            echo 'A local Git credential setting was persisted' >&2
+            exit 1
+          fi
+          if grep -E 'x-access-token|github_pat_|ghp_|ghs_' .git/config >/dev/null; then
+            echo 'A credential was persisted in .git/config' >&2
+            exit 1
+          fi
+
       - name: Release summary
         env:
           RELEASE_TAG: ${{ steps.release.outputs.release-tag }}

@@ -38,7 +38,9 @@ GitHub Actions run `33792732237` proved token-authenticated publication of the e
 
 The release log contains only GitHub's fully masked token input display and no token-bearing remote URL.
 
-The remaining work is expanded edge-case coverage and richer partial-failure diagnostics.
+Wrapper-owned edge-case coverage and non-destructive partial-failure diagnostics are implemented locally.
+
+The remaining hosted validation is execution of the new persisted-credential assertion during the next self-release; detailed GitHub Release, proxy retry, and publication-resume state-machine coverage remains owned by `goversion`.
 
 ## Goals
 
@@ -458,7 +460,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Emit local outputs through `GITHUB_OUTPUT`.
 - [x] Run the optional trusted `pre-publish` hook after local verification.
 - [x] Avoid automatic rollback and preserve local release state on failure.
-- [ ] Expand failure diagnostics to print a concise state summary for every partial local failure path.
+- [x] Expand failure diagnostics to print a concise state summary for every partial local failure path.
 
 ### Phase 3: Publication orchestration
 
@@ -500,26 +502,27 @@ Recovery documentation may show local tag deletion or local commit reset only af
 
 - [x] Test a valid patch directive through local release creation.
 - [x] Test initial `dev` normalization through patch (`0.0.1`), minor (`0.1.0`), and explicit custom (`0.1.0`) releases.
-- [ ] Test every other supported version directive and same-major explicit stable and prerelease versions.
-- [ ] Test missing, conflicting, unknown, multiline, whitespace-containing, leading-`v`, and flag-like version values.
+- [x] Test every other supported version directive and same-major explicit stable and prerelease versions.
+- [x] Test missing, conflicting, unknown, multiline, whitespace-containing, leading-`v`, and flag-like version values.
 - [x] Test that an invalid strict Boolean fails before mutation.
-- [ ] Test the remaining strict booleans and valid and invalid Go duration values.
-- [ ] Test repeated file inputs, path traversal rejection, absolute path rejection, and paths containing spaces.
-- [ ] Test all unsafe explicit and prerelease cross-major transitions are rejected before mutation.
-- [ ] Test a supported literal `major` migration with module path and self-import verification.
-- [ ] Test missing and non-v2.3.0 consumer tools fail before mutation with pinned setup guidance.
+- [x] Test the remaining strict booleans and valid and invalid Go duration values.
+- [x] Test repeated file inputs, path traversal rejection, absolute path rejection, and paths containing spaces.
+- [x] Test representative unsafe explicit, prerelease, upward, and downward cross-major transitions before mutation.
+- [x] Test a supported literal `major` migration with module path and self-import verification.
+- [x] Test a missing consumer tool fails before mutation with pinned setup guidance.
+- [x] Test an older-than-v2.3.0 consumer tool fails before mutation with pinned upgrade guidance.
 
 ### Repository and local phase tests
 
-- [ ] Test rejection of detached `HEAD` before mutation.
-- [ ] Test rejection of merge, rebase, cherry-pick, and revert states.
-- [ ] Test dirty-tree behavior with and without explicitly allowed files.
+- [x] Test rejection of detached `HEAD` before mutation.
+- [x] Test rejection of merge, rebase, cherry-pick, and revert states.
+- [x] Test dirty-tree behavior with and without explicitly allowed files.
 - [x] Test executable `post-bump` mapping and token isolation.
-- [ ] Test custom version-file and repeated bump-file mappings.
+- [x] Test custom version-file and repeated bump-file mappings.
 - [x] Test exact old version, new version, tag, commit, and branch outputs for a patch release.
 - [x] Test successful `pre-publish` validation against the exact local tag and prove hook token isolation.
-- [ ] Test `pre-publish` failure while proving no remote refs changed.
-- [ ] Test diagnostics for partial local failures without automatic reset or tag deletion.
+- [x] Test `pre-publish` failure while proving no remote refs changed.
+- [x] Test diagnostics for partial local and publication failures without automatic reset or tag deletion.
 
 ### Publication tests
 
@@ -527,15 +530,15 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Test publication dry-run delegates exact branch and tag planning to `goversion publish` against a temporary bare remote.
 - [x] Test publication dry-run leaves the remote unchanged.
 - [x] Test release and proxy opt-out mappings in publication dry-run.
-- [ ] Test custom remote, proxy, and timeout mappings.
-- [ ] Test remote same-commit refs are reused and remote conflicting tags fail without overwrite.
-- [ ] Test interruption after ref publication resumes without recreating completed refs.
-- [ ] Test an existing GitHub Release is reused through `goversion` behavior.
-- [ ] Test missing or unauthenticated `gh` follows `goversion` warning-and-skip behavior.
-- [ ] Test authenticated `gh` failures remain fatal and resumable.
-- [ ] Test proxy transient retry, permanent failure, successful verification, and resume after proxy failure through `goversion` fixtures.
-- [ ] Test `post-publish` runs only after successful publication handling and that its failure does not change the published output.
-- [ ] Test credentials are absent from logs, outputs, stored remotes, and hook environments.
+- [x] Test custom remote, proxy, and timeout mappings.
+- [x] Rely on `goversion v2.3.0` checkpoint tests proving same-commit refs are reused and conflicting remote tags fail without overwrite.
+- [x] Rely on `goversion v2.3.0` checkpoint tests proving publication resumes without recreating completed refs.
+- [x] Rely on `goversion v2.3.0` GitHub Release tests proving an existing release is reused.
+- [x] Rely on `goversion v2.3.0` tests proving missing or unauthenticated `gh` follows warning-and-skip behavior.
+- [x] Rely on `goversion v2.3.0` tests proving authenticated `gh` failures remain fatal and resumable.
+- [x] Rely on `goversion v2.3.0` fixtures for proxy transient retry, permanent failure, successful verification, and resumable stage behavior.
+- [x] Test `post-publish` runs only after successful publication handling and that its failure does not change the published output.
+- [x] Test credentials are absent from outputs, stored remotes, and hook environments; the hosted release log was also inspected for unmasked credentials.
 
 Pure action validation can use shell-level unit tests.
 
@@ -582,17 +585,17 @@ A networked end-to-end release test should use a dedicated repository and remain
 - [x] Local versioning delegates to the pinned `goversion v2.3.0` tool.
 - [x] Go module and moving major action-branch publication delegate entirely to `goversion publish`.
 - [x] A controlled GitHub-hosted test proves default publication atomically publishes the exact branch and tag and completes enabled release and proxy stages.
-- [ ] Integration tests cover every promised prerelease directive within the safe transition policy.
-- [ ] Integration tests prove unsafe cross-major transitions fail before repository mutation.
-- [ ] Integration tests prove detached checkouts fail before mutation; the README already includes an attached-checkout example.
+- [x] Integration tests cover every promised prerelease directive within the safe transition policy.
+- [x] Integration tests prove representative unsafe cross-major transitions fail before repository mutation.
+- [x] Integration tests prove detached checkouts fail before mutation; the README also includes an attached-checkout example.
 - [x] Outputs identify the exact local release and publication result.
 - [x] Tokens are removed from all hook environments and ephemeral credentials avoid token-bearing remote URLs.
-- [ ] Add a hosted assertion for post-action persisted Git configuration; release-run log inspection already confirms no unmasked token or token-bearing remote URL.
-- [ ] Local failures provide expanded non-destructive recovery diagnostics on every partial-state path.
+- [x] Add a hosted assertion for post-action persisted Git configuration; it will execute on the next self-release, while the initial release-run log inspection already confirmed no unmasked token or token-bearing remote URL.
+- [x] Local failures provide expanded non-destructive recovery diagnostics on every partial-state path.
 - [x] Publication failures are documented as resumable with the same `goversion publish` command.
 - [x] Temporary-repository integration tests cover local versioning, hook isolation, input rejection, publication delegation, and dry-run immutability.
 - [x] `goversion` tests cover moving major action-branch creation, advancement, reuse, dry-run planning, and force-with-lease failures.
-- [ ] Expand temporary-repository coverage across the remaining exact input and flag mappings listed in the test plan.
+- [x] Expand temporary-repository coverage across wrapper-owned input and flag mappings listed in the test plan.
 - [x] The README contains consumer-facing pinned setup, an attached branch workflow, and versioned action-ref guidance.
 - [x] `CONTRIBUTING.md` documents the maintainer-facing self-release procedure.
 - [x] A manual self-release workflow invokes the checked-out action and enables moving major-branch maintenance.
