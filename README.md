@@ -1,3 +1,5 @@
+![go-bump: Bump goversion. Ship releases.](logo-og.png)
+
 # go-bump
 
 [![Actions Status][action-img]][action-url]
@@ -305,3 +307,5 @@ This downloads dependencies, builds the small self-version package, runs Go test
 ## License
 
 MIT
+
+![Go gopher sweeping the workshop](logo-gopher.png)
