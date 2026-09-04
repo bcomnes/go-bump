@@ -104,16 +104,16 @@ jobs:
 The initial test run validates the current source.
 `pre-publish` validates the exact version commit and tag before `goversion publish` changes remote state.
 
-For a module under `go/`, register `goversion` in `go/go.mod`, point Go setup at that module, and select it with `workdir`:
+For a module in a subdirectory, register `goversion` in that module's `go.mod`, point Go setup at it, and select the module with `workdir`. For example, a module under `tools/widget/` can use:
 
 ```yaml
 - uses: actions/setup-go@v5
   with:
-    go-version-file: go/go.mod
+    go-version-file: tools/widget/go.mod
 
 - uses: bcomnes/go-bump@v0
   with:
-    workdir: go
+    workdir: tools/widget
     version-file: internal/version/version.go
     version-type: patch
     github-token: ${{ github.token }}
@@ -122,16 +122,16 @@ For a module under `go/`, register `goversion` in `go/go.mod`, point Go setup at
 
 The action itself and lifecycle hooks still run from the repository root.
 Version files, additional files, bump files, and `post-bump` are resolved relative to `workdir`.
-For this example, `goversion` creates and publishes a tag such as `go/v0.1.1`.
+For this example, `goversion` creates and publishes a tag such as `tools/widget/v0.1.1`.
 
-For a custom release, select `custom` and enter the version without a leading `v`:
+For a custom release, select `custom` and provide an unprefixed semantic version:
 
 ```text
 0.1.0
 ```
 
-Do not enter `v0.1.0`; `goversion` derives the canonical Git tag automatically.
-A root module uses `v0.1.0`, while a module selected with `workdir: go` uses `go/v0.1.0`.
+Do not provide a `v`-prefixed Git tag such as `v0.1.0` or `tools/widget/v0.1.0`.
+`goversion` derives the canonical tag from the unprefixed version: `0.1.0` becomes `v0.1.0` for a root module or `tools/widget/v0.1.0` for the nested module above.
 Use a repository-controlled command only; hook inputs execute trusted shell code.
 
 ## Inputs
