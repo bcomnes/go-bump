@@ -52,6 +52,7 @@ jobs:
           new-version: ${{ inputs.new-version }}
           github-token: ${{ github.token }}
           pre-publish: make all
+          seed-proxy: false
           major-branch: true
 
       - name: Verify credentials were not persisted
