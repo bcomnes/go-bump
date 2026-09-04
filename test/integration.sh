@@ -6,7 +6,7 @@ SCRIPT=$ROOT/scripts/go-bump.sh
 
 # The suite may run inside go-bump's pre-publish hook, where action inputs are
 # exported in the parent environment. Each test supplies its own configuration.
-unset VERSION_TYPE NEW_VERSION VERSION_FILE FILES BUMP_FILES POST_BUMP
+unset VERSION_TYPE NEW_VERSION WORKDIR VERSION_FILE FILES BUMP_FILES POST_BUMP
 unset PUBLISH PUBLISH_DRY_RUN REMOTE PROXY PUBLISH_TIMEOUT CREATE_RELEASE SEED_PROXY MAJOR_BRANCH
 unset GIT_USERNAME GIT_EMAIL PRE_PUBLISH POST_PUBLISH GH_TOKEN GITHUB_TOKEN
 
@@ -104,6 +104,48 @@ assert_contains "$TMP/local-release-output" 'publish-dry-run=false'
 assert_contains "$TMP/local-release-output" 'major-branch='
 [[ "$(git -C "$repo" describe --exact-match --tags HEAD)" == 'v0.1.1' ]]
 [[ "$(git -C "$repo" log -1 --format=%s)" == '0.1.1' ]]
+
+printf 'test: nested module uses workdir and canonical module tag\n'
+repo=$(new_repo nested-module)
+mkdir "$repo/go"
+mv "$repo/go.mod" "$repo/go.sum" "$repo/version.go" "$repo/example.go" "$repo/go/"
+sed -i.bak 's|module github.com/bcomnes/go-bump|module example.com/acme/repo/go|' "$repo/go/go.mod"
+rm "$repo/go/go.mod.bak"
+printf 'root hook marker\n' >"$repo/root-marker.txt"
+git -C "$repo" add .
+git -C "$repo" -c user.name=test -c user.email=test@example.com commit -m 'move module into go' >/dev/null
+remote=$TMP/nested-module.git
+git init --bare "$remote" >/dev/null
+git -C "$repo" remote add origin "$remote"
+run_action "$repo" \
+  WORKDIR=go \
+  PUBLISH=true \
+  CREATE_RELEASE=false \
+  SEED_PROXY=false \
+  PRE_PUBLISH='test -f root-marker.txt && test "$(git describe --exact-match --tags HEAD)" = go/v0.1.1'
+assert_contains "$TMP/nested-module-output" 'new-version=0.1.1'
+assert_contains "$TMP/nested-module-output" 'release-tag=go/v0.1.1'
+[[ "$(git -C "$repo" describe --exact-match --tags HEAD)" == 'go/v0.1.1' ]]
+[[ "$(git --git-dir="$remote" rev-parse refs/tags/go/v0.1.1)" == "$(git -C "$repo" rev-parse HEAD)" ]]
+
+git -C "$repo" remote set-url origin "$TMP/missing/nested-module.git"
+if run_action "$repo" WORKDIR=go PUBLISH=true CREATE_RELEASE=false SEED_PROXY=false >"$TMP/nested-failure-stdout" 2>"$TMP/nested-failure-stderr"; then
+  printf 'failing nested publication unexpectedly succeeded\n' >&2
+  exit 1
+fi
+assert_contains "$TMP/nested-failure-stderr" 'phase: publication'
+assert_contains "$TMP/nested-failure-stderr" 'expected-tag: go/v0.1.2'
+assert_contains "$TMP/nested-failure-stderr" 'resume-workdir: go'
+assert_contains "$TMP/nested-failure-stderr" 'resume: go tool github.com/bcomnes/goversion/v2 publish'
+[[ "$(git -C "$repo" describe --exact-match --tags HEAD)" == 'go/v0.1.2' ]]
+
+printf 'test: workdir validation fails before mutation\n'
+repo=$(new_repo invalid-workdir)
+assert_failure_unchanged "$repo" 'workdir does not exist or is not a directory' WORKDIR=missing
+mkdir "$repo/not-a-module"
+assert_failure_unchanged "$repo" 'workdir does not contain go.mod' WORKDIR=not-a-module
+ln -s "$TMP" "$repo/outside-workdir"
+assert_failure_unchanged "$repo" 'workdir resolves outside the repository' WORKDIR=outside-workdir
 
 printf 'test: initial dev releases normalize to semantic major zero\n'
 repo=$(new_repo dev-patch dev)
@@ -247,7 +289,7 @@ sed -i.bak '/^tool github.com\/bcomnes\/goversion\/v2$/d' "$repo/go.mod"
 rm "$repo/go.mod.bak"
 git -C "$repo" add go.mod
 git -C "$repo" -c user.name=test -c user.email=test@example.com commit -m 'remove tool directive' >/dev/null
-assert_failure_unchanged "$repo" 'goversion is not registered as a Go tool; run: go get -tool github.com/bcomnes/goversion/v2@v2.3.0'
+assert_failure_unchanged "$repo" 'goversion is not registered in ./go.mod as a Go tool; run from .: go get -tool github.com/bcomnes/goversion/v2@v2.4.1'
 
 printf 'test: older consumer tool fails with pinned upgrade guidance\n'
 repo=$(new_repo old-tool)
@@ -255,16 +297,20 @@ mkdir "$repo/test-bin"
 real_go=$(command -v go)
 cat >"$repo/test-bin/go" <<SH
 #!/bin/sh
-if [ "\${1:-}" = tool ] && [ "\${3:-}" = -version ]; then
-  echo 'goversion version 2.2.0'
-  exit 0
+if [ "\${1:-}" = tool ]; then
+  case " \$* " in
+    *' -version '*)
+      echo 'goversion version 2.2.0'
+      exit 0
+      ;;
+  esac
 fi
 exec "$real_go" "\$@"
 SH
 chmod +x "$repo/test-bin/go"
 git -C "$repo" add test-bin/go
 git -C "$repo" -c user.name=test -c user.email=test@example.com commit -m 'add test shim' >/dev/null
-assert_failure_unchanged "$repo" 'goversion v2.3.0 or newer is required, found 2.2.0; run: go get -tool github.com/bcomnes/goversion/v2@v2.3.0' PATH="$repo/test-bin:$PATH"
+assert_failure_unchanged "$repo" 'goversion v2.4.1 or newer is required, found 2.2.0; run from .: go get -tool github.com/bcomnes/goversion/v2@v2.4.1' PATH="$repo/test-bin:$PATH"
 
 printf 'test: detached head and Git operation states fail before mutation\n'
 repo=$(new_repo detached)
@@ -347,6 +393,7 @@ if run_action "$repo" PUBLISH=true CREATE_RELEASE=false SEED_PROXY=false >"$TMP/
   exit 1
 fi
 assert_contains "$TMP/failed-publication-stderr" 'phase: publication'
+assert_contains "$TMP/failed-publication-stderr" 'resume-workdir: .'
 assert_contains "$TMP/failed-publication-stderr" 'resume: go tool github.com/bcomnes/goversion/v2 publish'
 [[ "$(git -C "$repo" describe --exact-match --tags HEAD)" == 'v0.1.1' ]]
 

@@ -11,8 +11,12 @@ inputs:
   new-version:
     description: Explicit semantic version required for custom or when version-type is omitted (for example 0.1.0, not v0.1.0).
     required: false
+  workdir:
+    description: Repository-relative Go module directory containing the pinned goversion tool.
+    required: false
+    default: .
   version-file:
-    description: Repository-relative goversion version file.
+    description: Goversion version file relative to workdir.
     required: false
     default: ./version.go
   files:
@@ -22,7 +26,7 @@ inputs:
     description: Newline-delimited files passed as repeated goversion -bump-file flags.
     required: false
   post-bump:
-    description: Repository-relative executable passed to goversion -post-bump.
+    description: Executable relative to workdir, passed to goversion -post-bump.
     required: false
   publish:
     description: Run goversion publish after creating and validating the local release.
@@ -107,6 +111,7 @@ runs:
       env:
         VERSION_TYPE: ${{ inputs.version-type }}
         NEW_VERSION: ${{ inputs.new-version }}
+        WORKDIR: ${{ inputs.workdir }}
         VERSION_FILE: ${{ inputs.version-file }}
         FILES: ${{ inputs.files }}
         BUMP_FILES: ${{ inputs.bump-files }}

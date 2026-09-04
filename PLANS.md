@@ -8,7 +8,7 @@
 
 `go-bump` adapts that workflow to GitHub Actions by translating action inputs into `goversion` commands and supplying runner-specific orchestration.
 
-The supported integration target is `goversion v2.3.0`.
+The supported integration target is `goversion v2.4.1` or newer.
 
 The consumer owns checkout, Go setup, dependency download, and any project-specific validation that runs before the action.
 
@@ -30,7 +30,7 @@ make all
 git diff --check
 ```
 
-The moving major-branch implementation lives in published `goversion v2.3.0`, and `go-bump` only capability-checks and passes through `publish -major-branch`.
+Moving major branches and canonical root or nested module tags live in published `goversion v2.4.1`; `go-bump` selects the module workdir, consumes the exact dry-run tag, and delegates publication.
 
 The initial hosted self-release completed successfully as `v0.0.1` after fixing integration-test isolation from inherited action inputs.
 
@@ -44,10 +44,10 @@ The remaining hosted validation is execution of the new persisted-credential ass
 
 ## Goals
 
-1. Provide a small reusable action for releasing a single repository-root Go module.
+1. Provide a small reusable action for releasing one selected root or nested Go module per invocation.
 2. Require an exact consumer-selected `goversion` tool version through the consumer's committed Go tool dependency.
 3. Keep the action's delegated commands equivalent to the commands in `goversion`'s local workflow.
-4. Support safe stable, prerelease, and explicit semantic-version directives accepted by `goversion v2.3.0`.
+4. Support safe stable, prerelease, and explicit semantic-version directives accepted by `goversion v2.4.1`.
 5. Reject unsafe cross-major transitions before `goversion` mutates the repository.
 6. Preserve a clear two-phase boundary between local release creation and remote publication.
 7. Delegate module publication mechanics to `goversion publish`.
@@ -62,7 +62,9 @@ The first release does not implement semantic versioning, Go module migration, G
 
 The first release does not install or upgrade `goversion` for the consumer.
 
-The first release does not support detached `HEAD`, nested modules, multi-module repositories, or Go workspaces.
+The action does not support detached `HEAD` or using a Go workspace as the release unit.
+
+Repositories may contain multiple modules, but each action invocation selects exactly one module through `workdir`.
 
 The first release does not provide a Go package or standalone `go-bump` CLI.
 
@@ -90,7 +92,7 @@ The consumer supplies trusted hook commands only from repository-controlled work
 
 `go-bump` validates action-level syntax and policy before invoking a mutating command.
 
-`go-bump` verifies that `goversion v2.3.0` is available through the consumer's Go tool dependency.
+`go-bump` verifies that `goversion v2.4.1` or newer is available through the selected module's Go tool dependency.
 
 `go-bump` requires an attached current branch and rejects detached `HEAD` before local versioning.
 
@@ -108,13 +110,13 @@ The consumer supplies trusted hook commands only from repository-controlled work
 
 `go-bump` reports enough state for a maintainer to resume or recover safely.
 
-### `goversion v2.3.0` responsibilities
+### `goversion v2.4.1` responsibilities
 
 The version command reads or initializes the dedicated version file and resolves the requested directive.
 
 The version command updates configured files, performs supported module-path and self-import changes, runs its optional post-bump executable, creates the local version commit, and tags `HEAD` with `v<version>`.
 
-The publish command validates the repository-root module, clean worktree, attached branch, version, and matching local tag at `HEAD`.
+The publish command validates the selected root or nested module, clean worktree, attached branch, version, and matching canonical local tag at `HEAD`.
 
 The publish command atomically pushes only the incomplete exact branch and tag refs to the selected remote.
 
@@ -135,9 +137,9 @@ The publish command is resumable and reports `planned`, `completed`, `reused`, o
 Consumers must pin the currently supported tool version in the repository rather than using `@latest`.
 
 ```console
-go get -tool github.com/bcomnes/goversion/v2@v2.3.0
+go get -tool github.com/bcomnes/goversion/v2@v2.4.1
 git add go.mod go.sum
-git commit -m "Add goversion v2.3.0 release tool"
+git commit -m "Add goversion v2.4.1 release tool"
 ```
 
 A maintainer can then use the same two-phase lifecycle locally.
@@ -160,7 +162,8 @@ A missing or mismatched tool must fail before mutation with the exact pinned set
 |---|---|---|
 | `version-type` | none | This input accepts `major`, `minor`, `patch`, `premajor`, `preminor`, `prepatch`, `prerelease`, or `custom`. |
 | `new-version` | none | This input supplies a valid explicit semantic version without a leading `v`, such as `0.1.0`, when `version-type` is `custom` or omitted. |
-| `version-file` | `./version.go` | This input maps to the version command's `-version-file` flag. |
+| `workdir` | `.` | This repository-relative directory selects the module containing `go.mod` and the pinned `goversion` tool. |
+| `version-file` | `./version.go` | This workdir-relative input maps to the version command's `-version-file` flag. |
 | `files` | none | This newline-delimited input maps each nonempty line to one repeated `-file` flag. |
 | `bump-files` | none | This newline-delimited input maps each nonempty line to one repeated `-bump-file` flag. |
 | `post-bump` | none | This executable path maps to the version command's `-post-bump` flag. |
@@ -253,15 +256,15 @@ Publication outputs are written only after the corresponding publish command suc
 
 ## Supported transition policy
 
-`patch`, `minor`, and `major` are supported when their resulting module migration is safe under `goversion v2.3.0`.
+`patch`, `minor`, and `major` are supported when their resulting module migration is safe under `goversion v2.4.1`.
 
 `premajor`, `preminor`, `prepatch`, and `prerelease` are supported as directives.
 
 Explicit stable and prerelease semantic versions are supported when they remain within the current semantic major.
 
-Any directive or explicit version that crosses the semantic major boundary is rejected unless it is the literal `major` directive on a transition that `goversion v2.3.0` migrates safely.
+Any directive or explicit version that crosses the semantic major boundary is rejected unless it is the literal `major` directive on a transition that `goversion v2.4.1` migrates safely.
 
-`premajor` is therefore rejected whenever it would enter a new semantic major because v2.3.0 does not safely generalize module migration for that transition.
+`premajor` is therefore rejected whenever it would enter a new semantic major because v2.4.1 does not safely generalize module migration for that transition.
 
 An explicit version is rejected whenever its semantic major differs from the current version's semantic major.
 
@@ -277,7 +280,7 @@ The guards can be relaxed only after a tested `goversion` release bases module m
 
 Before local mutation, `go-bump` validates all action inputs, strict booleans, Go durations, paths, hook configuration, and input combinations.
 
-Before local mutation, `go-bump` verifies a Git worktree, repository root, attached branch, absence of an in-progress merge or history operation, and the required consumer-pinned `goversion v2.3.0` tool.
+Before local mutation, `go-bump` verifies a Git worktree, repository root, selected module workdir, attached branch, absence of an in-progress merge or history operation, and the required consumer-pinned `goversion v2.4.1` tool.
 
 Before local mutation, `go-bump` reads the old version and resolves enough of the requested target to enforce the cross-major policy.
 
@@ -291,7 +294,7 @@ Before local mutation, `go-bump` verifies that publication credentials and remot
 
 A version-command dry-run is not part of the initial action interface because the release action is designed around creating a local release candidate and then deciding whether to publish it.
 
-After success, `go-bump` verifies the new version, exact `v<version>` tag at `HEAD`, release commit SHA, and unchanged attached branch.
+After success, `go-bump` verifies the new version, exact canonical module tag reported by `goversion` at `HEAD`, release commit SHA, and unchanged attached branch.
 
 After verification, `go-bump` emits local outputs and runs `pre-publish` when configured.
 
@@ -299,7 +302,7 @@ After verification, `go-bump` emits local outputs and runs `pre-publish` when co
 
 `goversion publish` owns the authoritative second preflight against the completed local release candidate.
 
-That preflight requires a clean worktree, attached current branch, repository-root module, version compatible with the module path, and matching local tag at `HEAD`.
+That preflight requires a clean worktree, attached current branch, selected root or nested module, version compatible with the module path, and matching canonical local tag at `HEAD`.
 
 `go-bump` must not duplicate or weaken those checks.
 
@@ -386,7 +389,7 @@ jobs:
       - run: go test ./...
 
       - id: bump
-        uses: bcomnes/go-bump@<immutable-release-ref>
+        uses: bcomnes/go-bump@v0
         with:
           version-type: ${{ inputs.version-type }}
           new-version: ${{ inputs.new-version }}
@@ -445,8 +448,8 @@ Recovery documentation may show local tag deletion or local commit reset only af
 
 - [x] Define only the inputs and outputs in this plan in `action.yml`.
 - [x] Add a reusable orchestration script with strict input parsing and argument-array command construction.
-- [x] Verify `goversion v2.3.0` through the committed Go tool dependency.
-- [x] Validate the repository root, attached branch, Git operation state, remote configuration, paths, and applicable HTTPS credentials before mutation.
+- [x] Verify `goversion v2.4.1` through the selected module's committed Go tool dependency.
+- [x] Validate the repository root, module workdir, attached branch, Git operation state, remote configuration, paths, and applicable HTTPS credentials before mutation.
 - [x] Implement semantic transition preflight that rejects unsafe cross-major forms without performing module migration.
 - [x] Configure repository-local Git identity and ephemeral process-scoped HTTPS credentials.
 - [x] Keep the repository action-only and replace stale package/server assumptions with action-oriented build and test tasks.
@@ -454,8 +457,8 @@ Recovery documentation may show local tag deletion or local commit reset only af
 ### Phase 2: Local release orchestration
 
 - [x] Build the version command as an argument array with repeated `-file` and `-bump-file` values.
-- [x] Invoke the consumer-pinned tool from the repository root.
-- [x] Read the old and new versions from the dedicated version file rather than decorative command output.
+- [x] Invoke the consumer-pinned tool from the selected module workdir while retaining repository-root action and hook execution.
+- [x] Read the old and new versions from the dedicated version file and consume the exact canonical tag from `goversion` dry-run output.
 - [x] Verify the exact local tag at `HEAD`, release commit, and attached branch.
 - [x] Emit local outputs through `GITHUB_OUTPUT`.
 - [x] Run the optional trusted `pre-publish` hook after local verification.
@@ -475,7 +478,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Verify authenticated HTTPS publication and GitHub Release creation in a controlled GitHub-hosted end-to-end test.
 - [x] Verify real public proxy seeding in a controlled release test.
 - [x] Verify moving major action-branch creation, dry-run, reuse, lease safety, and advancement in `goversion` tests.
-- [x] Verify the `go-bump` pass-through against published `goversion v2.3.0` across moving major-branch creation and advancement.
+- [x] Verify the `go-bump` pass-through against published `goversion v2.4.1` across nested tags and moving major-branch creation and advancement.
 
 ### Phase 4: Self-hosting release workflow
 
@@ -487,7 +490,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 
 ### Phase 5: Documentation
 
-- [x] Document exact pinned local setup with `v2.3.0`.
+- [x] Document exact pinned local setup with `v2.4.1`.
 - [x] Document attached branch checkout and full history requirements.
 - [x] Document all action inputs and their exact `goversion` flag mappings.
 - [x] Document prerelease support and temporary cross-major rejection rules.
@@ -501,6 +504,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 ### Input and policy tests
 
 - [x] Test a valid patch directive through local release creation.
+- [x] Test nested module selection, canonical nested tag creation and publication, root-level hooks, and workdir escape rejection.
 - [x] Test initial `dev` normalization through patch (`0.0.1`), minor (`0.1.0`), and explicit custom (`0.1.0`) releases.
 - [x] Test every other supported version directive and same-major explicit stable and prerelease versions.
 - [x] Test missing, conflicting, unknown, multiline, whitespace-containing, leading-`v`, and flag-like version values.
@@ -510,7 +514,7 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Test representative unsafe explicit, prerelease, upward, and downward cross-major transitions before mutation.
 - [x] Test a supported literal `major` migration with module path and self-import verification.
 - [x] Test a missing consumer tool fails before mutation with pinned setup guidance.
-- [x] Test an older-than-v2.3.0 consumer tool fails before mutation with pinned upgrade guidance.
+- [x] Test an older-than-v2.4.1 consumer tool fails before mutation with pinned upgrade guidance.
 
 ### Repository and local phase tests
 
@@ -531,12 +535,12 @@ Recovery documentation may show local tag deletion or local commit reset only af
 - [x] Test publication dry-run leaves the remote unchanged.
 - [x] Test release and proxy opt-out mappings in publication dry-run.
 - [x] Test custom remote, proxy, and timeout mappings.
-- [x] Rely on `goversion v2.3.0` checkpoint tests proving same-commit refs are reused and conflicting remote tags fail without overwrite.
-- [x] Rely on `goversion v2.3.0` checkpoint tests proving publication resumes without recreating completed refs.
-- [x] Rely on `goversion v2.3.0` GitHub Release tests proving an existing release is reused.
-- [x] Rely on `goversion v2.3.0` tests proving missing or unauthenticated `gh` follows warning-and-skip behavior.
-- [x] Rely on `goversion v2.3.0` tests proving authenticated `gh` failures remain fatal and resumable.
-- [x] Rely on `goversion v2.3.0` fixtures for proxy transient retry, permanent failure, successful verification, and resumable stage behavior.
+- [x] Rely on `goversion v2.4.1` checkpoint tests proving same-commit refs are reused and conflicting remote tags fail without overwrite.
+- [x] Rely on `goversion v2.4.1` checkpoint tests proving publication resumes without recreating completed refs.
+- [x] Rely on `goversion v2.4.1` GitHub Release tests proving an existing release is reused.
+- [x] Rely on `goversion v2.4.1` tests proving missing or unauthenticated `gh` follows warning-and-skip behavior.
+- [x] Rely on `goversion v2.4.1` tests proving authenticated `gh` failures remain fatal and resumable.
+- [x] Rely on `goversion v2.4.1` fixtures for proxy transient retry, permanent failure, successful verification, and resumable stage behavior.
 - [x] Test `post-publish` runs only after successful publication handling and that its failure does not change the published output.
 - [x] Test credentials are absent from outputs, stored remotes, and hook environments; the hosted release log was also inspected for unmasked credentials.
 
@@ -544,14 +548,14 @@ Pure action validation can use shell-level unit tests.
 
 Git behavior should use real temporary repositories and bare remotes rather than mocked Git output.
 
-GitHub Release and proxy edge cases should primarily rely on `goversion v2.3.0`'s own tests, while `go-bump` tests verify delegation and argument mapping.
+GitHub Release and proxy edge cases should primarily rely on `goversion v2.4.1`'s own tests, while `go-bump` tests verify delegation and argument mapping.
 
 A networked end-to-end release test should use a dedicated repository and remain outside the default pull-request suite.
 
 ## Resolved decisions
 
 1. `go-bump` is action-only.
-2. Consumers must pin `goversion v2.3.0` as a committed Go tool dependency.
+2. Consumers must pin `goversion v2.4.1` or newer as a committed Go tool dependency in the selected module.
 3. The action has no installation or upgrade fallback.
 4. `goversion` is the local-first workflow, and `go-bump` is its GitHub Actions wrapper using equivalent version and publish commands.
 5. Publication defaults to enabled.
@@ -565,25 +569,24 @@ A networked end-to-end release test should use a dedicated repository and remain
 13. GitHub Release notes are generated by `goversion`, and the action promises no custom notes or release asset handling.
 14. Optional hooks are trusted orchestration boundaries and do not replace `goversion` release ownership.
 15. Publication recovery uses `goversion publish` resume semantics rather than wrapper rollback or duplicated reconciliation.
-16. Nested modules, multi-module repositories, and workspaces remain unsupported in the initial release.
+16. Root and nested modules are supported through `workdir`; one module is released per invocation, and Go workspaces do not select the release unit.
 17. `major-branch` is opt-in, is planned during dry-run, runs last during real publication, and uses force-with-lease rather than an unconditional force push.
 18. Self-releases invoke the checked-out action with `uses: ./` and enable `major-branch`, avoiding a bootstrap dependency on a previously published action ref.
 
 ## Remaining open questions
 
-1. Should the implementation continue accepting `v2.3.0` and newer, or move to an exact-version compatibility policy after broader tests exist?
+1. Should the implementation continue accepting `v2.4.1` and newer, or move to an exact-version compatibility policy after broader tests exist?
 2. Should `pre-publish` and `post-publish` accept only executable paths for consistency with `post-bump`, or should they remain explicitly trusted shell commands?
-3. Should the action expose `workdir` later, or should repository-root execution remain a permanent single-module constraint?
-4. Should missing or unauthenticated `gh` remain the upstream warning-and-skip behavior when `create-release` is true, or should the wrapper add a stricter policy input in a later release?
-5. What stable machine-readable `goversion` output should the action consume when upstream exposes one?
-6. Which future `goversion` release and migration tests are sufficient to remove each cross-major compatibility guard?
+3. Should missing or unauthenticated `gh` remain the upstream warning-and-skip behavior when `create-release` is true, or should the wrapper add a stricter policy input in a later release?
+4. What stable machine-readable `goversion` output should the action consume when upstream exposes one?
+5. Which future `goversion` release and migration tests are sufficient to remove each cross-major compatibility guard?
 
 ## Definition of done
 
 - [x] The composite action implements only the ownership and interface defined in this plan.
 - [x] Validation for supported input syntax, attached branch state, tool version, and unsafe cross-major policy runs before the local version command.
-- [x] Local versioning delegates to the pinned `goversion v2.3.0` tool.
-- [x] Go module and moving major action-branch publication delegate entirely to `goversion publish`.
+- [x] Local versioning delegates to the selected module's pinned `goversion v2.4.1` tool.
+- [x] Root and nested Go module publication plus moving major action-branch publication delegate entirely to `goversion publish`.
 - [x] A controlled GitHub-hosted test proves default publication atomically publishes the exact branch and tag and completes enabled release and proxy stages.
 - [x] Integration tests cover every promised prerelease directive within the safe transition policy.
 - [x] Integration tests prove representative unsafe cross-major transitions fail before repository mutation.
