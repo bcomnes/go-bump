@@ -46,7 +46,7 @@ jobs:
       - run: make all
 
       - id: release
-        uses: ./
+        uses: $/
         with:
           version-type: ${{ inputs.version-type }}
           new-version: ${{ inputs.new-version }}
