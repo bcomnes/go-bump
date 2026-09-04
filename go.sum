@@ -1,4 +1,4 @@
-github.com/bcomnes/goversion/v2 v2.3.0 h1:ZZSATQ12QsAyVXXmeMNp2tSoZcvq2wfQkXE3pBC/m+c=
-github.com/bcomnes/goversion/v2 v2.3.0/go.mod h1:cquAy0zgQmU4+klSfBIuWsXTwFKRBfZ9UV91aM3CfJE=
+github.com/bcomnes/goversion/v2 v2.4.1 h1:1QlmURMjeAtw3VnCr4rjWCk2LIxJG7eL5aPX0OeV428=
+github.com/bcomnes/goversion/v2 v2.4.1/go.mod h1:pDkWrZ++BgkGGrILUyA1nDxmZ126AYBHx8/mHEC/xcc=
 golang.org/x/mod v0.40.0 h1:hUv+3cXcdRHz08UmSiOob7sadHig73uo5bkXxQ/tvUs=
 golang.org/x/mod v0.40.0/go.mod h1:0/weTWkPWGBikyTWAX3dkjVztMmBA5hM0DH6BElSupE=

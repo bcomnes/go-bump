@@ -13,24 +13,25 @@
 
 `go-bump` v1 requires:
 
-- A single Go module at the repository root.
+- One selected root or nested Go module per action invocation.
 - An attached release branch rather than detached `HEAD`.
 - Full Git history and tags.
 - Go with tool dependencies enabled.
-- `goversion v2.3.0` committed as a Go tool dependency.
-- A dedicated `version.go` compatible with `goversion`.
+- `goversion v2.4.1` or newer committed as a Go tool dependency in the selected module.
+- A dedicated version file compatible with `goversion`.
 - `contents: write` when publication is enabled.
 
-Nested modules, multi-module repositories, and Go workspaces are not supported initially.
+Repositories may contain multiple modules, but each invocation versions and publishes only the module selected by `workdir`.
+Go workspaces are not used for module selection.
 
 ## Local setup
 
 Pin the release tool once and commit the module changes:
 
 ```console
-go get -tool github.com/bcomnes/goversion/v2@v2.3.0
+go get -tool github.com/bcomnes/goversion/v2@v2.4.1
 git add go.mod go.sum
-git commit -m "Add goversion v2.3.0 release tool"
+git commit -m "Add goversion v2.4.1 release tool"
 ```
 
 The equivalent local release flow is:
@@ -90,7 +91,7 @@ jobs:
       - run: go test ./...
 
       - id: bump
-        uses: bcomnes/go-bump@<immutable-release-ref>
+        uses: bcomnes/go-bump@v0
         with:
           version-type: ${{ inputs.version-type }}
           new-version: ${{ inputs.new-version }}
@@ -103,13 +104,34 @@ jobs:
 The initial test run validates the current source.
 `pre-publish` validates the exact version commit and tag before `goversion publish` changes remote state.
 
+For a module under `go/`, register `goversion` in `go/go.mod`, point Go setup at that module, and select it with `workdir`:
+
+```yaml
+- uses: actions/setup-go@v5
+  with:
+    go-version-file: go/go.mod
+
+- uses: bcomnes/go-bump@v0
+  with:
+    workdir: go
+    version-file: internal/version/version.go
+    version-type: patch
+    github-token: ${{ github.token }}
+    pre-publish: make release-validation
+```
+
+The action itself and lifecycle hooks still run from the repository root.
+Version files, additional files, bump files, and `post-bump` are resolved relative to `workdir`.
+For this example, `goversion` creates and publishes a tag such as `go/v0.1.1`.
+
 For a custom release, select `custom` and enter the version without a leading `v`:
 
 ```text
 0.1.0
 ```
 
-Do not enter `v0.1.0`; `goversion` adds the `v` prefix to the Git tag automatically.
+Do not enter `v0.1.0`; `goversion` derives the canonical Git tag automatically.
+A root module uses `v0.1.0`, while a module selected with `workdir: go` uses `go/v0.1.0`.
 Use a repository-controlled command only; hook inputs execute trusted shell code.
 
 ## Inputs
@@ -120,10 +142,11 @@ Use a repository-controlled command only; hook inputs execute trusted shell code
 |---|---|---|
 | `version-type` | none | `major`, `minor`, `patch`, `premajor`, `preminor`, `prepatch`, `prerelease`, or `custom` |
 | `new-version` | none | Explicit version without a leading `v`, such as `0.1.0`, required for `custom` or when `version-type` is omitted |
-| `version-file` | `./version.go` | Repository-relative version file |
-| `files` | none | Newline-delimited values passed as repeated `goversion -file` flags |
-| `bump-files` | none | Newline-delimited values passed as repeated `goversion -bump-file` flags |
-| `post-bump` | none | Repository-relative executable passed to `goversion -post-bump` |
+| `workdir` | `.` | Repository-relative directory containing the selected module's `go.mod` and pinned `goversion` tool |
+| `version-file` | `./version.go` | Version file relative to `workdir` |
+| `files` | none | Newline-delimited paths relative to `workdir`, passed as repeated `goversion -file` flags |
+| `bump-files` | none | Newline-delimited paths relative to `workdir`, passed as repeated `goversion -bump-file` flags |
+| `post-bump` | none | Executable relative to `workdir`, passed to `goversion -post-bump` |
 
 `from-git` and `dev` are not action release directives.
 Cross-major explicit and prerelease transitions are rejected unless the literal `major` directive can perform the required Go module migration safely.
@@ -173,7 +196,7 @@ GitHub tokens are removed from hook environments.
 |---|---|
 | `old-version` | Version before the release |
 | `new-version` | Created release version |
-| `release-tag` | Exact `v<version>` tag verified at `HEAD` |
+| `release-tag` | Exact canonical module tag verified at `HEAD`, such as `v0.1.0` or `go/v0.1.0` |
 | `release-commit` | Exact release commit SHA |
 | `release-branch` | Attached release branch |
 | `published` | `true` after successful non-dry publication |
@@ -206,7 +229,7 @@ Repository maintainers can find the self-release procedure in [`CONTRIBUTING.md`
 
 `goversion publish`:
 
-1. Validates the root module, clean worktree, attached branch, version, and local tag.
+1. Validates the selected root or nested module, clean worktree, attached branch, version, and canonical local tag.
 2. Atomically pushes only incomplete exact branch and tag refs.
 3. Creates or reuses a GitHub Release with generated notes when authenticated `gh` is available.
 4. Seeds and verifies the module through the configured Go proxy.
@@ -220,9 +243,9 @@ An authenticated `gh` operation that fails remains fatal.
 `go-bump` does not expose a separate resume mode.
 Do not rerun the entire `go-bump` action after it has created a release commit.
 A full rerun can calculate the next version instead of resuming the interrupted publication.
-Use the consumer-pinned `goversion` tool locally to inspect and resume the existing release.
+Use the consumer-pinned `goversion` tool from the selected module directory to inspect and resume the existing release.
 
-First, fetch the release branch and tags:
+First, fetch the release branch and tags from the repository root:
 
 ```console
 git fetch --tags origin
@@ -230,17 +253,20 @@ git switch <release-branch>
 git pull --ff-only origin <release-branch>
 ```
 
-Check the failed workflow log for the intended version, tag, and commit.
-If the exact tag was already pushed, verify that it identifies the branch tip:
+Check the failed workflow log for the intended version, canonical tag, and commit.
+If the exact tag was already pushed, verify that it identifies the branch tip using the reported `release-tag` or `expected-tag` value:
 
 ```console
 git rev-parse HEAD
-git rev-parse v0.1.0^{commit}
+git rev-parse <release-tag>^{commit}
 ```
 
-If the release commit and tag were created only on the failed runner and were not pushed, recreate that candidate locally with the exact version rather than another relative bump:
+For example, a module selected with `workdir: go` reports a tag such as `go/v0.1.0`.
+
+If the release commit and tag were created only on the failed runner and were not pushed, change to the selected module directory and recreate that candidate locally with the exact version rather than another relative bump:
 
 ```console
+cd <workdir>
 go tool github.com/bcomnes/goversion/v2 0.1.0
 go test ./...
 ```

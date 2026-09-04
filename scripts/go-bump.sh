@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 readonly GOVERSION_TOOL='github.com/bcomnes/goversion/v2'
-readonly REQUIRED_GOVERSION='2.3.0'
+readonly REQUIRED_GOVERSION='2.4.1'
 
 fail() {
   printf 'go-bump: %s\n' "$*" >&2
@@ -91,6 +91,14 @@ run_hook() {
   env -u GH_TOKEN -u GITHUB_TOKEN -u GIT_CONFIG_COUNT -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 bash -c "$command"
 }
 
+run_goversion() {
+  (cd -- "$MODULE_ROOT" && go tool "$GOVERSION_TOOL" "$@")
+}
+
+run_goversion_without_tokens() {
+  (unset GH_TOKEN GITHUB_TOKEN; run_goversion "$@")
+}
+
 FAILURE_PHASE='preflight'
 TARGET_VERSION=''
 RELEASE_TAG=''
@@ -119,6 +127,7 @@ report_failure() {
     printf '  worktree: clean\n' >&2
   fi
   if [[ "$FAILURE_PHASE" == 'publication' && ${#PUBLISH_ARGS[@]} -gt 0 ]]; then
+    printf '  resume-workdir: %s\n' "$WORKDIR" >&2
     printf '  resume:' >&2
     printf ' %q' go tool "$GOVERSION_TOOL" "${PUBLISH_ARGS[@]}" >&2
     printf '\n' >&2
@@ -129,6 +138,7 @@ report_failure() {
 
 VERSION_TYPE=${VERSION_TYPE:-}
 NEW_VERSION=${NEW_VERSION:-}
+WORKDIR=${WORKDIR:-.}
 VERSION_FILE=${VERSION_FILE:-./version.go}
 FILES=${FILES:-}
 BUMP_FILES=${BUMP_FILES:-}
@@ -166,6 +176,7 @@ if [[ "$PUBLISH" == 'false' ]]; then
   [[ "$MAJOR_BRANCH" == 'false' ]] || fail 'major-branch requires publish to be true'
 fi
 
+validate_relative_path 'workdir' "$WORKDIR"
 validate_relative_path 'version-file' "$VERSION_FILE"
 [[ -n "$REMOTE" && "$REMOTE" != -* && "$REMOTE" != *$'\n'* && "$REMOTE" != *$'\r'* ]] || fail 'remote must be a nonempty Git remote name without line breaks'
 [[ -n "$PROXY" && "$PROXY" != *$'\n'* && "$PROXY" != *$'\r'* ]] || fail 'proxy must be nonempty and contain no line breaks'
@@ -197,19 +208,23 @@ command -v go >/dev/null || fail 'Go is required'
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || fail 'the current directory is not a Git worktree'
 REPO_ROOT_PHYSICAL=$(cd -- "$REPO_ROOT" >/dev/null && pwd -P)
 [[ "$REPO_ROOT_PHYSICAL" == "$(pwd -P)" ]] || fail 'go-bump must run from the repository root'
+[[ -d "$WORKDIR" ]] || fail "workdir does not exist or is not a directory: $WORKDIR"
+MODULE_ROOT=$(cd -- "$WORKDIR" >/dev/null && pwd -P)
+[[ "$MODULE_ROOT" == "$REPO_ROOT_PHYSICAL" || "$MODULE_ROOT" == "$REPO_ROOT_PHYSICAL"/* ]] || fail "workdir resolves outside the repository: $WORKDIR"
+[[ -f "$MODULE_ROOT/go.mod" ]] || fail "workdir does not contain go.mod: $WORKDIR"
 BRANCH=$(git symbolic-ref --quiet --short HEAD) || fail 'an attached release branch is required; check out the intended branch explicitly'
-[[ -f "$VERSION_FILE" ]] || fail "version file does not exist: $VERSION_FILE"
+[[ -f "$MODULE_ROOT/$VERSION_FILE" ]] || fail "version file does not exist in workdir: $VERSION_FILE"
 
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
   [[ ! -e "$(git rev-parse --git-path "$marker")" ]] || fail "Git operation in progress: $marker"
 done
 [[ ! -d "$(git rev-parse --git-path rebase-merge)" && ! -d "$(git rev-parse --git-path rebase-apply)" ]] || fail 'Git rebase in progress'
 
-TOOL_OUTPUT=$(go tool "$GOVERSION_TOOL" -version 2>/dev/null) || fail "goversion is not registered as a Go tool; run: go get -tool $GOVERSION_TOOL@v$REQUIRED_GOVERSION"
+TOOL_OUTPUT=$(run_goversion -version 2>/dev/null) || fail "goversion is not registered in $WORKDIR/go.mod as a Go tool; run from $WORKDIR: go get -tool $GOVERSION_TOOL@v$REQUIRED_GOVERSION"
 TOOL_VERSION=${TOOL_OUTPUT##* }
-version_at_least "$TOOL_VERSION" "$REQUIRED_GOVERSION" || fail "goversion v$REQUIRED_GOVERSION or newer is required, found $TOOL_VERSION; run: go get -tool $GOVERSION_TOOL@v$REQUIRED_GOVERSION"
+version_at_least "$TOOL_VERSION" "$REQUIRED_GOVERSION" || fail "goversion v$REQUIRED_GOVERSION or newer is required, found $TOOL_VERSION; run from $WORKDIR: go get -tool $GOVERSION_TOOL@v$REQUIRED_GOVERSION"
 if [[ "$MAJOR_BRANCH" == 'true' ]]; then
-  go tool "$GOVERSION_TOOL" publish -help 2>&1 | grep -F -- '-major-branch' >/dev/null || fail "the pinned goversion does not support publish -major-branch; run: go get -tool $GOVERSION_TOOL@v$REQUIRED_GOVERSION"
+  run_goversion publish -help 2>&1 | grep -F -- '-major-branch' >/dev/null || fail "the pinned goversion does not support publish -major-branch; run from $WORKDIR: go get -tool $GOVERSION_TOOL@v$REQUIRED_GOVERSION"
 fi
 
 REMOTE_URL=''
@@ -222,20 +237,22 @@ if [[ "$PUBLISH" == 'true' ]]; then
   esac
 fi
 
-OLD_VERSION=$(read_version "$VERSION_FILE")
+OLD_VERSION=$(read_version "$MODULE_ROOT/$VERSION_FILE")
 VERSION_ARGS=(-version-file "$VERSION_FILE")
 append_paths 'files entry' '-file' "$FILES"
 append_paths 'bump-files entry' '-bump-file' "$BUMP_FILES"
 if [[ -n "$POST_BUMP" ]]; then
   validate_relative_path 'post-bump' "$POST_BUMP"
-  [[ -x "$POST_BUMP" ]] || fail "post-bump must be executable: $POST_BUMP"
+  [[ -x "$MODULE_ROOT/$POST_BUMP" ]] || fail "post-bump must be executable in workdir: $POST_BUMP"
   VERSION_ARGS+=(-post-bump "$POST_BUMP")
 fi
 
 printf 'go-bump: preflighting goversion %s\n' "$VERSION_ARG"
-DRY_OUTPUT=$(env -u GH_TOKEN -u GITHUB_TOKEN go tool "$GOVERSION_TOOL" "${VERSION_ARGS[@]}" -dry "$VERSION_ARG")
+DRY_OUTPUT=$(run_goversion_without_tokens "${VERSION_ARGS[@]}" -dry "$VERSION_ARG")
 TARGET_VERSION=$(sed -nE 's/^New Version:[[:space:]]+//p' <<< "$DRY_OUTPUT" | sed -n '1p')
+TARGET_TAG=$(sed -nE 's/^Tag:[[:space:]]+//p' <<< "$DRY_OUTPUT" | sed -n '1p')
 [[ -n "$TARGET_VERSION" ]] || fail 'could not determine the target version from goversion dry run'
+[[ -n "$TARGET_TAG" ]] || fail 'could not determine the canonical release tag from goversion dry run'
 
 OLD_MAJOR=$(major_of "$OLD_VERSION")
 TARGET_MAJOR=$(major_of "$TARGET_VERSION")
@@ -248,12 +265,12 @@ FAILURE_PHASE='local-version'
 trap report_failure ERR
 git config --local user.name "$GIT_USERNAME"
 git config --local user.email "$GIT_EMAIL"
-env -u GH_TOKEN -u GITHUB_TOKEN go tool "$GOVERSION_TOOL" "${VERSION_ARGS[@]}" "$VERSION_ARG"
+run_goversion_without_tokens "${VERSION_ARGS[@]}" "$VERSION_ARG"
 FAILURE_PHASE='local-verification'
 
-ACTUAL_VERSION=$(read_version "$VERSION_FILE")
+ACTUAL_VERSION=$(read_version "$MODULE_ROOT/$VERSION_FILE")
 [[ "$ACTUAL_VERSION" == "$TARGET_VERSION" ]] || fail "version mismatch after goversion: expected $TARGET_VERSION, got $ACTUAL_VERSION"
-RELEASE_TAG="v$ACTUAL_VERSION"
+RELEASE_TAG=$TARGET_TAG
 RELEASE_COMMIT=$(git rev-parse HEAD)
 TAG_COMMIT=$(git rev-list -n 1 "$RELEASE_TAG" 2>/dev/null) || fail "expected release tag was not created: $RELEASE_TAG"
 [[ "$TAG_COMMIT" == "$RELEASE_COMMIT" ]] || fail "release tag $RELEASE_TAG does not point to HEAD"
@@ -296,14 +313,14 @@ case "$REMOTE_URL" in
       GIT_CONFIG_COUNT=1 \
       GIT_CONFIG_KEY_0='credential.helper' \
       GIT_CONFIG_VALUE_0='!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f' \
-      go tool "$GOVERSION_TOOL" "${PUBLISH_ARGS[@]}"
+      run_goversion "${PUBLISH_ARGS[@]}"
     ;;
   git@*|ssh://*)
     printf 'go-bump: using existing SSH credentials for %s; github-token authenticates gh only\n' "$REMOTE" >&2
-    GH_TOKEN="$GH_TOKEN" go tool "$GOVERSION_TOOL" "${PUBLISH_ARGS[@]}"
+    GH_TOKEN="$GH_TOKEN" run_goversion "${PUBLISH_ARGS[@]}"
     ;;
   *)
-    GH_TOKEN="$GH_TOKEN" go tool "$GOVERSION_TOOL" "${PUBLISH_ARGS[@]}"
+    GH_TOKEN="$GH_TOKEN" run_goversion "${PUBLISH_ARGS[@]}"
     ;;
 esac
 
